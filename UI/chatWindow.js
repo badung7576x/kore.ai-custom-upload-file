@@ -732,6 +732,7 @@
                     "botOptions": cfg.botOptions
                 };
                 koreAPIUrl = cfg.botOptions.koreAPIUrl;
+                uploadAPIUrl = cfg.botOptions.uploadAPIUrl;
                 bearerToken = cfg.botOptions.bearer;
                 //speechServerUrl = cfg.botOptions.speechSocketUrl;
                 speechPrefixURL = cfg.botOptions.koreSpeechAPIUrl;
@@ -1419,6 +1420,7 @@
                     document.getElementById("captureAttachmnts").value = "";
                 });
                 _chatContainer.off('change', '#captureAttachmnts').on('change', '#captureAttachmnts', function (event) {
+                    console.log("Step1: File has been uploaded");
                     var file = $('#captureAttachmnts').prop('files')[0];
                     if (file && file.size) {
                         if (file.size > filetypes.file.limit.size) {
@@ -4841,6 +4843,7 @@
                 }
             }
             function cnvertFiles(_this, _file, customFileName) {
+                console.log("Step 2: Check uploaded file type");
                 var _scope = _this, recState = {};
                 if (_file && _file.size) {
                     if (_file.size > filetypes.file.limit.size) {
@@ -4873,6 +4876,8 @@
                         recState.uploadFn = 'acceptFile';
                     }
                     if (allowedFileTypes && allowedFileTypes.indexOf(fileType) !== -1) {
+                        console.log("==> Check allowed file type");
+                        console.log("==> Upload file and get file token");
                         if (recState.type === 'audio' || recState.type === 'video') {
                             //read duration;
                             var rd = new FileReader();
@@ -4947,9 +4952,10 @@
                 return dataURL;
             };
             function acceptAndUploadFile(_this, file, recState) {
+                console.log("Step 4: Accept and upload file");
                 var _scope = _this, ele;
                 var uc = getfileuploadConf(recState);
-                uc.chunkUpload = file.size > appConsts.CHUNK_SIZE;
+                uc.chunkUpload = false;                 // disable chunk upload
                 uc.chunkSize = appConsts.CHUNK_SIZE;
                 uc.file = file;
                 if (uc.chunkUpload) {
@@ -4958,6 +4964,8 @@
                     initiateRcorder(recState, ele);
                     ele.uploader(uc);
                 } else {
+                    console.log("==> Upload file without chunk upload");
+                    console.log("==> Data: ", recState)
                     var reader = new FileReader();
                     reader.onloadend = function (evt) {
                         if (evt.target.readyState === FileReader.DONE) { // DONE == 2
@@ -4972,41 +4980,47 @@
                 }
             };
             function getFileToken(_obj, _file, recState) {
-                var me=chatInitialize;
-                var auth = (bearerToken) ? bearerToken : assertionToken;
-                var url=koreAPIUrl + "1.1/attachment/file/token";
-                if(me.config && me.config && me.config.botOptions && me.config.botOptions.webhookConfig && me.config.botOptions.webhookConfig.enable){
-                    url=koreAPIUrl + "attachments/"+me.config.botOptions.webhookConfig.streamId+"/"+me.config.botOptions.webhookConfig.channelType+"/token";
-                    auth='bearer '+me.config.botOptions.webhookConfig.token;
-                }
-                $.ajax({
-                    type: "POST",
-                    url: url,
-                    dataType: "json",
-                    headers: {
-                        Authorization: auth
-                    },
-                    success: function (response) {
-                        fileToken = response.fileToken;
-                        acceptAndUploadFile(_obj, _file, recState);
-                    },
-                    error: function (msg) {
-                        chatInitialize.config.botOptions._reconnecting=true;
-                        _self.showError("Failed to upload file.Please try again");
-                        if(msg.responseJSON && msg.responseJSON.errors && msg.responseJSON.errors.length && msg.responseJSON.errors[0].httpStatus==="401"){
-                            setTimeout(function(){
-                                _self.hideError();
-                            },5000);
-                            $(".kore-chat-window .reload-btn").trigger("click");
-                        }
-                        console.log("Oops, something went horribly wrong");
-                    }
-                });
+                console.log("Step 3: Push file and get file token");
+                console.log("==> Replace processing logic to not use tokens");
+                acceptAndUploadFile(_obj, _file, recState);
+                // ---------
+                // var me=chatInitialize;
+                // var auth = (bearerToken) ? bearerToken : assertionToken;
+                // var url=koreAPIUrl + "1.1/attachment/file/token";
+                // if(me.config && me.config && me.config.botOptions && me.config.botOptions.webhookConfig && me.config.botOptions.webhookConfig.enable){
+                //     url=koreAPIUrl + "attachments/"+me.config.botOptions.webhookConfig.streamId+"/"+me.config.botOptions.webhookConfig.channelType+"/token";
+                //     auth='bearer '+me.config.botOptions.webhookConfig.token;
+                // }
+                // $.ajax({
+                //     type: "POST",
+                //     url: url,
+                //     dataType: "json",
+                //     headers: {
+                //         Authorization: auth
+                //     },
+                //     success: function (response) {
+                //         fileToken = response.fileToken;
+                //         acceptAndUploadFile(_obj, _file, recState);
+                //     },
+                //     error: function (msg) {
+                //         chatInitialize.config.botOptions._reconnecting=true;
+                //         _self.showError("Failed to upload file.Please try again");
+                //         if(msg.responseJSON && msg.responseJSON.errors && msg.responseJSON.errors.length && msg.responseJSON.errors[0].httpStatus==="401"){
+                //             setTimeout(function(){
+                //                 _self.hideError();
+                //             },5000);
+                //             $(".kore-chat-window .reload-btn").trigger("click");
+                //         }
+                //         console.log("Oops, something went horribly wrong");
+                //     }
+                // });
             }
             function getfileuploadConf(_recState) {
+                console.log("==> Change upload api url in config");
                 var me=chatInitialize;
                 appConsts.UPLOAD = {
-                    "FILE_ENDPOINT": koreAPIUrl + "1.1/attachment/file",
+                    // "FILE_ENDPOINT": koreAPIUrl + "1.1/attachment/file",
+                    "FILE_ENDPOINT": uploadAPIUrl,
                     "FILE_TOKEN_ENDPOINT": koreAPIUrl + "1.1/attachment/file/token",
                     "FILE_CHUNK_ENDPOINT": koreAPIUrl + "1.1/attachment/file/:fileID/chunk"
                 };
@@ -5153,6 +5167,7 @@
                 $('.sendButton').removeClass('disabled');
             };
             function acceptFileRecording(_this, _recState, ele) {
+                console.log("Step 5: Upload file in here");
                 var _scope = _this;
                 var _uc = getfileuploadConf(_recState),
                     _imageCntn = _recState.resulttype;
@@ -5393,6 +5408,7 @@
                 _conc.send();
             };
             function startUpload(_this) {
+                console.log("Process to upload file here", _this)
                 var _scope = _this;
                 _conc = getConnection(_this),
                     _mdat = new MultipartData();
@@ -5565,23 +5581,26 @@
             var old = $.fn.uploader;
 
             $.fn.uploader = function (option) {
-                var _args = Array.prototype.slice.call(arguments, 1);
-                return this.each(function () {
-                    var $this = $(this),
-                        data = '';//$this.data('ke.uploader'),
-                    options = typeof option === 'object' && option;
+                console.log(option);
+                // Make custom upload here
 
-                    if (!data) {
-                        $this.data('ke.uploader', (data = new Uploader($this, options)));
-                    } else if (option) {
-                        if (typeof option === 'string' && data[option]) {
-                            data[option].apply(data, _args);
-                        } else if (options) {
-                            startUpload(setOptions(data, options));
-                        }
-                    }
-                    return option && data[option] && data[option].apply(data, _args);
-                });
+                // var _args = Array.prototype.slice.call(arguments, 1);
+                // return this.each(function () {
+                //     var $this = $(this),
+                //         data = '';//$this.data('ke.uploader'),
+                //     options = typeof option === 'object' && option;
+
+                //     if (!data) {
+                //         $this.data('ke.uploader', (data = new Uploader($this, options)));
+                //     } else if (option) {
+                //         if (typeof option === 'string' && data[option]) {
+                //             data[option].apply(data, _args);
+                //         } else if (options) {
+                //             startUpload(setOptions(data, options));
+                //         }
+                //     }
+                //     return option && data[option] && data[option].apply(data, _args);
+                // });
             };
 
             $.fn.uploader.Constructor = Uploader;

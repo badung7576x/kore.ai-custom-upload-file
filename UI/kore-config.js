@@ -5,6 +5,7 @@
     var botOptions = {};
     botOptions.logLevel = 'debug';
     botOptions.koreAPIUrl = "https://bots.kore.ai/api/";
+    botOptions.uploadAPIUrl  = "http://localhost:8080/upload";
     botOptions.koreSpeechAPIUrl = "";//deprecated
     //botOptions.bearer = "bearer xyz-------------------";
     //botOptions.ttsSocketUrl = '';//deprecated
@@ -12,7 +13,7 @@
     botOptions.recorderWorkerPath = '../libs/recorderWorker.js';
 
     botOptions.JWTUrl = "http://127.0.0.1:8080/jwt_service";
-    botOptions.userIdentity = 'dung.ctv@mindbank.tech';// Provide users email id here
+    botOptions.userIdentity = 'random-uuid';// Provide users email id here
     botOptions.botInfo = { name: "Roadway Monitor", "_id": "st-d8122b00-a614-5787-820c-a27788428b38" }; // bot name is case sensitive
 
     /* 
