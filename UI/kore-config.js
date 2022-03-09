@@ -11,17 +11,17 @@
     botOptions.koreAnonymousFn = koreAnonymousFn;
     botOptions.recorderWorkerPath = '../libs/recorderWorker.js';
 
-    botOptions.JWTUrl = "PLEASE_ENTER_JWTURL_HERE";
-    botOptions.userIdentity = 'PLEASE_ENTER_USER_EMAIL_ID';// Provide users email id here
-    botOptions.botInfo = { name: "PLEASE_ENTER_BOT_NAME", "_id": "PLEASE_ENTER_BOT_ID" }; // bot name is case sensitive
+    botOptions.JWTUrl = "http://127.0.0.1:8080/jwt_service";
+    botOptions.userIdentity = 'random-uuid';// Provide users email id here
+    botOptions.botInfo = { name: "Roadway Monitor", "_id": "st-d8122b00-a614-5787-820c-a27788428b38" }; // bot name is case sensitive
 
     /* 
     Important Note: These keys are provided here for quick demos to generate JWT token at client side but not for Production environment.
     Refer below document for JWT token generation at server side. Client Id and Client secret should maintained at server end.
     https://developer.kore.ai/docs/bots/sdks/user-authorization-and-assertion/
     **/
-    botOptions.clientId = "PLEASE_ENTER_CLIENT_ID";
-    botOptions.clientSecret = "PLEASE_ENTER_CLIENT_SECRET";
+    botOptions.clientId = "cs-60024471-cf9b-50e3-a39b-15a48b8638ac";
+    botOptions.clientSecret = "03vzosPVmJWoY5ntxeLLSNyPgjMCQeODWLz6tS7xp20=";
     botOptions.brandingAPIUrl = botOptions.koreAPIUrl +'websdkthemes/'+  botOptions.botInfo._id+'/activetheme';
     botOptions.enableThemes = true;
 // for webhook based communication use following option 
