@@ -2,12 +2,18 @@
 var albumBucketName = "roadway-monitor";
 var bucketRegion = "ap-northeast-1";
 var IdentityPoolId = "ap-northeast-1:2bf2f7d4-dc61-4722-b04b-53971024aa14";
-
+var prefixPath = "evidence/"
 AWS.config.update({
     region: bucketRegion,
     credentials: new AWS.CognitoIdentityCredentials({
         IdentityPoolId: IdentityPoolId
     })
+});
+
+var bucket = new AWS.S3({
+  params: {
+      Bucket: albumBucketName
+  }
 });
 
 function uuidv4() {
@@ -23,54 +29,26 @@ function uuidv4() {
   }
 }
 
-function uploadUsingSdk(files, identity=null) {
-  if (!files.length) {
-      return;
+function uploadUsingSdk(_data) {
+  var path = prefixPath + (_data.identity ? _data.identity + "/" : "");
+  var objecKey = path + _data.fileName;
+
+  var params = {
+    Key: objecKey,
+    Body: _data.file
   }
-  var file = files[0];
-  var fileName = file.name;
-  var path = "evidence/" + (identity ? identity + "/" : "");
-  var objecKey = path + fileName;
 
-  var upload = new AWS.S3.ManagedUpload({
-      params: {
-          Bucket: albumBucketName,
-          Key: objecKey,
-          Body: file
-      }
-  });
-
-  var promise = upload.promise();
-  promise.then(
-      function (data) {
-          console.log("Successfully uploaded photo to aws.");
-      },
-      function (err) {
-          console.error("There was an error uploading your photo: ", err.message);
-      }
-  );
+  bucket.upload(params, function(err, data) {
+    if (err) {
+      _data.onUploadError(err);
+    } else {
+      //   
+    }
+  }).on('httpUploadProgress', function(progress) { 
+    let progressPercentage = Math.round(progress.loaded / progress.total * 100);
+    _data.onUploadInProgress(progressPercentage);
+    if (progressPercentage == 100) {
+      _data.onUploadSuccess();
+    }
+  })
 }
-
-// async function uploadUsingPresignUrl() {
-//   var user_id = document.getElementById("user_id").value;
-//   var files = document.getElementById("photoupload").files;
-//   var fileData = files[0];
-//   var fileName = fileData.name;
-//   var contentType = fileData.type
-//   const response = await axios.get('https://plz748xtn3.execute-api.ap-northeast-1.amazonaws.com/staging/get_upload_presign_url?user_id=' + user_id + '&file_name=' + fileName + '&content_type=' + contentType)
-
-//   const preSigned = response.data.data.presign_url
-//   console.log(preSigned);
-
-//   await axios.put(preSigned, fileData, {
-//       headers: {
-//           "Content-Type": fileData.type
-//       },
-//       onUploadProgress: (e) => {
-//           //  Show progress
-//           var percentCompleted = Math.round((e.loaded * 100) / e.total);
-//           document.getElementById("uploadProgress").innerHTML = percentCompleted;
-//         },
-//   })
-//   alert("Upload completed");
-// }
