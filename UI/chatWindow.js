@@ -1410,6 +1410,17 @@
                     }
                     $('#captureAttachmnts').trigger('click');
                 });
+                _chatContainer.off('click', '#customUploadBtn').on('click', '#customUploadBtn', function (event) {
+                    if (fileUploaderCounter == 1) {
+                        alert('You can upload only one file');
+                        return;
+                    }
+                    if ($('.upldIndc').is(':visible')) {
+                        alert('Uploading file, please wait...');
+                        return;
+                    }
+                    $('#captureAttachmnts').trigger('click');
+                });
                 _chatContainer.off('click', '.removeAttachment').on('click', '.removeAttachment', function (event) {
                     $(this).parents('.msgCmpt').remove();
                     $('.kore-chat-window').removeClass('kore-chat-attachment');
@@ -2872,7 +2883,16 @@
                             'helpers': helpers,
                             'extension': extension
                         });
-                    } else {
+                    } 
+                    else if (msgData.message[0] && msgData.message[0].component && msgData.message[0].component.payload && msgData.message[0].component.payload.template_type == "upload") {
+                        console.log("==> button upload template")
+                        messageHtml = $(me.getChatTemplate("templateupload")).tmpl({
+                            'msgData': msgData,
+                            'helpers': helpers,
+                            'extension': extension
+                        })
+                    }
+                    else {
                         messageHtml = $(me.getChatTemplate("message")).tmpl({
                             'msgData': msgData,
                             'helpers': helpers,
@@ -3630,6 +3650,31 @@
                         <div role="region" aria-live="polite" aria-atomic="true" class="failedIframe">Failed to load iFrame</div>\
                     {{/if}}\
                 </script>';
+                var uploadTemplate = '<script id="chat_message_tmpl" type="text/x-jqury-tmpl"> \
+                {{if msgData.message}} \
+                    <li data-time="${msgData.createdOnTimemillis}" id="${msgData.messageId || msgItem.clientMessageId}"\
+                        class="{{if msgData.type === "bot_response"}}fromOtherUsers{{else}}fromCurrentUser{{/if}} with-icon"> \
+                        <div class="buttonTmplContent"> \
+                            {{if msgData.createdOn}}<div aria-live="off" class="extra-info">${helpers.formatDate(msgData.createdOn)}</div>{{/if}} \
+                            {{if msgData.icon}}<div aria-live="off" class="profile-photo"> <div class="user-account avtar" style="background-image:url(${msgData.icon})"></div> </div> {{/if}} \
+                            <ul class="buttonTmplContentBox">\
+                                <li class="buttonTmplContentHeading"> \
+                                    {{if msgData.type === "bot_response"}} {{html helpers.convertMDtoHTML(msgData.message[0].component.payload.text, "bot")}} {{else}} {{html helpers.convertMDtoHTML(msgData.message[0].component.payload.text, "user")}} {{/if}} \
+                                    {{if msgData.message[0].cInfo && msgData.message[0].cInfo.emoji}} \
+                                        <span class="emojione emojione-${msgData.message[0].cInfo.emoji[0].code}">${msgData.message[0].cInfo.emoji[0].title}</span> \
+                                    {{/if}} \
+                                </li>\
+                                <a>\
+                                    <li data-value="${msgData.message[0].component.payload.buttons[0].value}" type="${msgData.message[0].component.payload.buttons[0].type}" id="customUploadBtn" class="buttonTmplContentChild">\
+                                            ${msgData.message[0].component.payload.buttons[0].title}\
+                                    </li> \
+                                </a> \
+                            </ul>\
+                        </div>\
+                    </li> \
+                {{/if}} \
+            </scipt>';
+
             if (tempType === "message") {
                 return msgTemplate;
             } else if (tempType === "popup") {
@@ -3668,6 +3713,9 @@
             }
             else if (tempType === "iframe") {
                 return iframe;
+            } 
+            else  if (tempType === "templateupload") {
+                return uploadTemplate;
             }
             else {
                 return chatWindowTemplate;

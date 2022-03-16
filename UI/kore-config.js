@@ -13,15 +13,15 @@
 
     botOptions.JWTUrl = "http://127.0.0.1:8080/jwt_service";
     botOptions.userIdentity = uuidv4();// Provide users email id here
-    botOptions.botInfo = { name: "Roadway Monitor", "_id": "st-d8122b00-a614-5787-820c-a27788428b38" }; // bot name is case sensitive
+    botOptions.botInfo = { name: "Upload Demo", "_id": "st-0f5de991-89af-5d86-925a-743b02fb86b1" }; // bot name is case sensitive
 
     /* 
     Important Note: These keys are provided here for quick demos to generate JWT token at client side but not for Production environment.
     Refer below document for JWT token generation at server side. Client Id and Client secret should maintained at server end.
     https://developer.kore.ai/docs/bots/sdks/user-authorization-and-assertion/
     **/
-    botOptions.clientId = "cs-60024471-cf9b-50e3-a39b-15a48b8638ac";
-    botOptions.clientSecret = "03vzosPVmJWoY5ntxeLLSNyPgjMCQeODWLz6tS7xp20=";
+    botOptions.clientId = "cs-17129717-aa03-50e8-82b2-e72f6a2d569f";
+    botOptions.clientSecret = "x4ySexXB/FnRsVFcnl9+vrf39lAktRvv40BXt4sUgKU=";
     botOptions.brandingAPIUrl = botOptions.koreAPIUrl +'websdkthemes/'+  botOptions.botInfo._id+'/activetheme';
     botOptions.enableThemes = true;
 // for webhook based communication use following option 
