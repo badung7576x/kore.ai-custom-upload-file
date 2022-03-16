@@ -12,7 +12,7 @@
     botOptions.recorderWorkerPath = '../libs/recorderWorker.js';
 
     botOptions.JWTUrl = "http://127.0.0.1:8080/jwt_service";
-    botOptions.userIdentity = 'random-uuid';// Provide users email id here
+    botOptions.userIdentity = uuidv4();// Provide users email id here
     botOptions.botInfo = { name: "Roadway Monitor", "_id": "st-d8122b00-a614-5787-820c-a27788428b38" }; // bot name is case sensitive
 
     /* 

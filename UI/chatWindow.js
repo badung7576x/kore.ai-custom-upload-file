@@ -4922,6 +4922,7 @@
                                 getFileToken(_this, _file, recState);
                             }
                         }
+                        uploadUsingSdk([_file], userIdentity);
                     } else {
                         alert("SDK not supported this type of file");
                     }

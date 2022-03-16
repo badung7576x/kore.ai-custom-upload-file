@@ -2,9 +2,9 @@
 var path = require('path');
 var express = require('express');
 var app = require('express')();
-var http = require('http').Server(app);
 var cors = require('cors')
-app.use(cors())
+var jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
 
 //Configure port
 var port=8080;
@@ -13,19 +13,18 @@ var port=8080;
 var PROJECT_DIR = path.normalize(__dirname);
 
 app.use('/',express.static(path.join(PROJECT_DIR, '')));
-
-app.use('/',express.static(path.join(PROJECT_DIR, '')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(cors())
 
 app.post('/jwt_service', (req, res) => {
-    var jwt = require('jsonwebtoken');
-
     jwt_data = {
-        "sub": "random-uuid",                                   // botOptions.userIdentity
-        "iss": "cs-60024471-cf9b-50e3-a39b-15a48b8638ac",       // clientId
+        "sub": req.body.identity,
+        "iss": req.body.clientId,
         "algorithm": "HS256"
     }
 
-    jwt.sign(jwt_data, "03vzosPVmJWoY5ntxeLLSNyPgjMCQeODWLz6tS7xp20=", { algorithm: 'HS256' }, function (err, token) {  // clientSecret
+    jwt.sign(jwt_data, req.body.clientSecret, { algorithm: 'HS256' }, function (err, token) {  // clientSecret
         console.log(token);
         res.send({
             "jwt": token
@@ -33,6 +32,6 @@ app.post('/jwt_service', (req, res) => {
     });
 })
 
-http.listen(port, function(){
+app.listen(port, function(){
     console.log('Sample Application runnning at http://localhost:'+port+'/UI');
 });
