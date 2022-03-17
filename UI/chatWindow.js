@@ -36,6 +36,8 @@
             var carouselEles = [];
             var prevRange, accessToken, koreAPIUrl, fileToken, fileUploaderCounter = 0, bearerToken = '', assertionToken = '', messagesQueue = [], historyLoading = false;
             var speechServerUrl = '', userIdentity = '', isListening = false, isRecordingStarted = false, speechPrefixURL = "", sidToken = "", carouselTemplateCount = 0, waiting_for_message = false, loadHistory = false;
+            var attachmentFile = null;
+            var isUploading = false;
             var EVENTS={
                 //chat window exposed events   
                 OPEN_OVERRIDE:"cw:open:override",
@@ -77,7 +79,7 @@
             filetypes.audio = audio;
             filetypes.video = video;
             filetypes.image = image;
-            filetypes.file = { limit: { size: 25 * 1024 * 1024, msg: "Please limit the individual file upload size to 25 MB or lower" } };
+            filetypes.file = { limit: { size: 500 * 1024 * 1024, msg: "Please limit the individual file upload size to 25 MB or lower" } };
             filetypes.determineFileType = function (extension) {
                 extension = extension.toLowerCase();
                 if ((filetypes.image.indexOf(extension) > -1)) {
@@ -1355,7 +1357,13 @@
                         }
                         event.preventDefault();
 
-                        me.sendMessage(_this, me.attachmentInfo);
+                        if(attachmentFile && me.attachmentInfo) {
+                            if(!isUploading) {
+                                _uploadToS3(_this, me)
+                            }
+                        } else {
+                            me.sendMessage(_this, me.attachmentInfo);
+                        }
                         return;
                     }
                     else if (event.keyCode === 27) {
@@ -1366,6 +1374,7 @@
                             this.innerText = "";
                             $('.attachment').empty();
                             fileUploaderCounter = 0;
+                            attachmentFile = null;
                             setTimeout(function () {
                                 setCaretEnd((document.getElementsByClassName("chatInputBox")));
                             }, 100);
@@ -1382,7 +1391,13 @@
                         $('.recordingMicrophone').trigger('click');
                     }
                     event.preventDefault();
-                    me.sendMessage(_this, me.attachmentInfo);
+                    if(attachmentFile && me.attachmentInfo) {
+                        if(!isUploading) {
+                            _uploadToS3(_this, me)
+                        }
+                    } else {
+                        me.sendMessage(_this, me.attachmentInfo);
+                    }
                     return;
                 });
                 _chatContainer.off('click', '.notRecordingMicrophone').on('click', '.notRecordingMicrophone', function (event) {
@@ -1425,6 +1440,7 @@
                     $(this).parents('.msgCmpt').remove();
                     $('.kore-chat-window').removeClass('kore-chat-attachment');
                     fileUploaderCounter = 0;
+                    attachmentFile = null;
                     me.attachmentInfo = {};
                     $('.sendButton').addClass('disabled');
                     document.getElementById("captureAttachmnts").value = "";
@@ -1437,7 +1453,8 @@
                             return;
                         }
                     }
-                    cnvertFiles(this, file);
+                    // cnvertFiles(this, file);
+                    _cnvertFiles(this, file);
                 });
                 _chatContainer.off('paste', '.chatInputBox').on('paste', '.chatInputBox', function (event) {
                     event.preventDefault();
@@ -2039,6 +2056,7 @@
                 }
                 var msgData = {};
                 fileUploaderCounter = 0;
+                attachmentFile = null;
                 //to send \n to server for new lines
                 chatInput.html(chatInput.html().replaceAll("<br>", "\n"));
                 if (me.attachmentInfo && Object.keys(me.attachmentInfo).length) {
@@ -2150,6 +2168,101 @@
                     msgData.message[0].cInfo.body = renderMsg;
                 }
                 msgData.message[0].cInfo.ignoreCheckMark=ignoreCheckMark;
+                me.renderMessage(msgData);
+            };
+
+            // custom sendMessage method to send url to bot
+            chatWindow.prototype._sendMessage = function (chatInput, renderMsg, fileUrl) {
+                var me = this;
+                me.stopSpeaking();
+                if (chatInput.text().trim() === "" && $('.attachment').html().trim().length == 0) {
+                    return;
+                }
+                if (me.config.allowLocation) {
+                    me.bot.fetchUserLocation();
+                }
+                var _bodyContainer = $(me.config.chatContainer).find('.kore-chat-body');
+                var _footerContainer = $(me.config.chatContainer).find('.kore-chat-footer');
+                var clientMessageId = new Date().getTime();
+                if(sendFailedMessage.messageId){
+                    clientMessageId=sendFailedMessage.messageId;
+                    sendFailedMessage.messageId=null;
+                }
+                var msgData = {};
+                fileUploaderCounter = 0;
+                attachmentFile = null;
+                //to send \n to server for new lines
+                chatInput.html(chatInput.html().replaceAll("<br>", "\n"));
+                $('.attachment').html('');
+                $('.kore-chat-window').removeClass('kore-chat-attachment');
+                document.getElementById("captureAttachmnts").value = "";
+
+                var messageToBot = {};
+                messageToBot["clientMessageId"] = clientMessageId;
+                messageToBot["message"] = { body: fileUrl };
+                messageToBot["resourceid"] = '/bot.message';
+                messageToBot["message"].renderMsg = renderMsg;
+                
+                if(me.config && me.config && me.config.botOptions && me.config.botOptions.webhookConfig && me.config.botOptions.webhookConfig.enable){
+                    me.sendMessageViaWebHook(
+                        chatInput.text(),
+                        function (msgsData) {
+                            me.handleWebHookResponse(msgsData);
+                        }, function (err) {
+                            setTimeout(function () {
+                                var failedMsgEle=$('.kore-chat-window [id="' + clientMessageId + '"]');
+                                failedMsgEle.find('.messageBubble').append('<div class="errorMsg hide"><span class="failed-text">Send Failed </span><div class="retry"><span class="retry-icon"></span><span class="retry-text">Retry</span></div></div>');
+                                if(sendFailedMessage.retryCount<sendFailedMessage.MAX_RETRIES){
+                                    failedMsgEle.find('.retry').trigger('click');
+                                    sendFailedMessage.retryCount++;
+                                }else{
+                                    failedMsgEle.find('.errorMsg').removeClass('hide');
+                                    $('.typingIndicatorContent').css('display', 'none');
+                                }
+                            }, 350);
+                        },
+                        me.attachmentInfo?{attachments:[me.attachmentInfo]}:null
+                        );
+                }else{
+                    me.bot.sendMessage(messageToBot, function messageSent(err) {
+                        if (err && err.message) {
+                            setTimeout(function () {
+                                var failedMsgEle=$('.kore-chat-window [id="' + clientMessageId + '"]');
+                                failedMsgEle.find('.messageBubble').append('<div class="errorMsg hide"><span class="failed-text">Send Failed </span><div class="retry"><span class="retry-icon"></span><span class="retry-text">Retry</span></div></div>');
+                                if(sendFailedMessage.retryCount<sendFailedMessage.MAX_RETRIES){
+                                    failedMsgEle.find('.retry').trigger('click');
+                                    sendFailedMessage.retryCount++;
+                                }else{
+                                    failedMsgEle.find('.errorMsg').removeClass('hide');
+                                    $('.typingIndicatorContent').css('display', 'none');
+                                }
+                            }, 350);
+                        }
+                    });    
+                }
+                me.attachmentInfo = {};
+                chatInput.html("");
+                $('.sendButton').addClass('disabled');
+                _bodyContainer.css('bottom', _footerContainer.outerHeight());
+                me.resetPingMessage();
+                $('.typingIndicatorContent').css('display', 'block');
+                if(me.typingIndicatorTimer){
+                    clearTimeout(me.typingIndicatorTimer);
+                }
+                me.typingIndicatorTimer=setTimeout(function () {
+                    $('.typingIndicatorContent').css('display', 'none');
+                }, me.config.maxTypingIndicatorTime || 10000);
+
+                msgData = {
+                    'type': "currentUser",
+                    "message": [{
+                        'type': 'text',
+                        'cInfo': { 'body': renderMsg },
+                        'clientMessageId': clientMessageId
+                    }],
+                    "createdOn": clientMessageId
+                };
+
                 me.renderMessage(msgData);
             };
                  
@@ -3098,7 +3211,7 @@
             else if (tempType === "iframe") {
                 return iframe;
             } 
-            else  if (tempType === "templateupload") {
+            else if (tempType === "templateupload") {
                 return uploadTemplate;
             }
             else {
@@ -4354,11 +4467,124 @@
                                 getFileToken(_this, _file, recState);
                             }
                         }
-                        uploadUsingSdk([_file], userIdentity);
                     } else {
                         alert("SDK not supported this type of file");
                     }
                 }
+            };
+
+            // -------- Custom upload aws s3 here ------------------
+            function _cnvertFiles(_this, _file) {
+                var recState = {};
+                if (_file && _file.size) {
+                    if (_file.size > filetypes.file.limit.size) {
+                        alert(filetypes.file.limit.msg);
+                        return;
+                    }
+                }
+                if (_file && _file.name) {
+                    var _fileName = _file.name.replace(/^([^.]*)\.(.*)$/, `$1-${(new Date()).getTime()}.$2`);
+                    var fileType = _fileName.split('.').pop().toLowerCase();
+                    recState.name = _fileName;
+                    recState.mediaName = getUID();
+                    recState.fileType = fileType;
+                    if ((filetypes.image.indexOf(recState.fileType) > -1)) {
+                        recState.type = 'image';
+                    } else if ((filetypes.video.indexOf(recState.fileType) > -1)) {
+                        recState.type = 'video';
+                    } else if ((filetypes.audio.indexOf(recState.fileType) > -1)) {
+                        recState.type = 'audio';
+                    } else {
+                        recState.type = 'attachment';
+                        recState.componentSize = _file.size;
+                    }
+                    if (allowedFileTypes && allowedFileTypes.indexOf(fileType) !== -1) {
+                        fileUploaderCounter = 1;
+                        attachmentFile = _file;
+                        _customRenderUploading(recState)
+                    } else {
+                        alert("SDK not supported this type of file");
+                    }
+                }
+            };
+            function _customRenderUploading(_recState) {
+                var _cmpt = null;
+                var fileType = _recState.fileType;
+                var componentType = _recState.type;
+                var fileName = _recState.name;
+                if (!_cmpt) {
+                    _cmpt = $('<div/>').attr({
+                        'class': 'msgCmpt attachmentCmpt ' + componentType
+                    });
+
+                    if (componentType === 'attachment') {
+                        if (fileType === 'xls' || fileType === 'xlsx') {
+                            _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-files_excel"></span></div>');
+                            _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                        } else if (fileType === 'docx' || fileType === 'doc') {
+                            _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-files_word"></span></div>');
+                            _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                        }
+                        else if (fileType === 'pdf') {
+                            _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-files_pdf"></span></div>');
+                            _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                        } else if (fileType === 'ppsx' || fileType === 'pptx' || fileType === 'ppt') {
+                            _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-files_ppt"></span></div>');
+                            _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                        } else if (fileType === 'zip' || fileType === 'rar') {
+                            _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-files_zip"></span></div>');
+                            _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                        } else {
+                            _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-files_other_doc"></span></div>');
+                            _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                        }
+                    }
+                    if (componentType === 'image') {
+                        _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-photos_active"></span></div>');
+                        _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                    }
+                    if (componentType === 'audio') {
+                        _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-files_audio"></span></div>');
+                        _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                    }
+                    if (componentType === 'video') {
+                        _cmpt.append('<div class="uploadedFileIcon"><span class="icon cf-icon icon-video_active"></span></div>');
+                        _cmpt.append('<div class="uploadedFileName">' + fileName + '</div>');
+                    }
+                }
+                _cmpt.append('<div class="removeAttachment"><span>&times;</span></div>');
+                $('.footerContainer').find('.attachment').html(_cmpt);
+                $('.chatInputBox').focus();
+                chatInitialize.attachmentInfo.fileName = fileName;
+                chatInitialize.attachmentInfo.fileType = componentType;
+                $('.sendButton').removeClass('disabled');
+            };
+            function _uploadToS3(_this, me) {
+                isUploading = true;
+                const _params = {
+                    file: attachmentFile,
+                    fileName: chatInitialize.attachmentInfo.fileName,
+                    identity: userIdentity,
+                    onUploadInProgress: (progress) => {
+                        if(!$('.upldIndc').is(':visible')) {
+                            $('.attachmentCmpt').append('<div class="upldIndc"></div>');
+                            $('.attachmentCmpt').append('<div class="upldIndcProgress"></div>');
+                        }
+                        $('.upldIndcProgress').html(progress + "%");
+                        console.log('File is ' + progress + '% uploaded');
+                    },
+                    onUploadSuccess: () => {
+                        let fileUrl = "https://roadway-monitor.s3.ap-northeast-1.amazonaws.com/evidence/...";
+                        me._sendMessage(_this, me.attachmentInfo.fileName, fileUrl);
+                        isUploading = false
+                    },
+                    onUploadError: (error) => {
+                        console.log(error);
+                        isUploading = false
+                        onError()
+                    }
+                }
+                uploadUsingSdk(_params)
             };
             function getUID(pattern) {
                 var _pattern = pattern || 'xxxxyx';
