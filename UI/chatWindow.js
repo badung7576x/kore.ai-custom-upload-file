@@ -1444,6 +1444,7 @@
                     me.attachmentInfo = {};
                     $('.sendButton').addClass('disabled');
                     document.getElementById("captureAttachmnts").value = "";
+                    abortUpload()
                 });
                 _chatContainer.off('change', '#captureAttachmnts').on('change', '#captureAttachmnts', function (event) {
                     var file = $('#captureAttachmnts').prop('files')[0];
@@ -4574,7 +4575,8 @@
                         console.log('File is ' + progress + '% uploaded');
                     },
                     onUploadSuccess: () => {
-                        let fileUrl = "https://roadway-monitor.s3.ap-northeast-1.amazonaws.com/evidence/...";
+                        let fileUrl = userIdentity + "/" + chatInitialize.attachmentInfo.fileName;
+                        console.log("🚀 ~ file: chatWindow.js ~ line 4579 ~ _uploadToS3 ~ fileUrl", fileUrl)
                         me._sendMessage(_this, me.attachmentInfo.fileName, fileUrl);
                         isUploading = false
                     },
@@ -4584,6 +4586,7 @@
                         onError()
                     }
                 }
+                console.log(_params)
                 uploadUsingSdk(_params)
             };
             function getUID(pattern) {

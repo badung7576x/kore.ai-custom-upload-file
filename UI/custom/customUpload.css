@@ -12,7 +12,7 @@
 */
 .upldIndcProgress {
     position: absolute;
-    top: 10;
+    top: 10px;
     right: 10px;
     color: grey;
 }

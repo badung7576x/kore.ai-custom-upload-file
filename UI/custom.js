@@ -3,6 +3,7 @@ var albumBucketName = "roadway-monitor";
 var bucketRegion = "ap-northeast-1";
 var IdentityPoolId = "ap-northeast-1:2bf2f7d4-dc61-4722-b04b-53971024aa14";
 var prefixPath = "evidence/";
+var uploadProcess = null;
 
 AWS.config.update({
     region: bucketRegion,
@@ -39,7 +40,7 @@ function uploadUsingSdk(_data) {
         Body: _data.file
     }
 
-    bucket.upload(params, function(err, data) {
+    uploadProcess = bucket.putObject(params, function(err, data) {
         if (err) {
           _data.onUploadError(err);
         } else {
@@ -52,4 +53,10 @@ function uploadUsingSdk(_data) {
         _data.onUploadSuccess();
     }
     })
+}
+
+function abortUpload() {
+    if (uploadProcess) {
+        uploadProcess.abort();
+    }
 }
