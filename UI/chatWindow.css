@@ -2998,3 +2998,13 @@
 #chatContainer{
     display: none;/*remove this minimizeMode false*/
 }
+
+/**
+* custom upload progress
+*/
+.upldIndcProgress {
+    position: absolute;
+    top: 10;
+    right: 10px;
+    color: grey;
+}

@@ -79,7 +79,7 @@
             filetypes.audio = audio;
             filetypes.video = video;
             filetypes.image = image;
-            filetypes.file = { limit: { size: 25 * 1024 * 1024, msg: "Please limit the individual file upload size to 25 MB or lower" } };
+            filetypes.file = { limit: { size: 500 * 1024 * 1024, msg: "Please limit the individual file upload size to 25 MB or lower" } };
             filetypes.determineFileType = function (extension) {
                 extension = extension.toLowerCase();
                 if ((filetypes.image.indexOf(extension) > -1)) {
@@ -5041,7 +5041,9 @@
                     onUploadInProgress: (progress) => {
                         if(!$('.upldIndc').is(':visible')) {
                             $('.attachmentCmpt').append('<div class="upldIndc"></div>');
+                            $('.attachmentCmpt').append('<div class="upldIndcProgress"></div>');
                         }
+                        $('.upldIndcProgress').html(progress + "%")
                         console.log('File is ' + progress + '% uploaded');
                     },
                     onUploadSuccess: () => {
