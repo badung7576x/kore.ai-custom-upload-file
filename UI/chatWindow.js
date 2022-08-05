@@ -2158,6 +2158,7 @@
                 }
                 msgData.message[0].cInfo.ignoreCheckMark=ignoreCheckMark;
                 me.renderMessage(msgData);
+                me.enableChatInputBox()
             };
                  
             chatWindow.prototype.handleWebHookResponse = function (msgsData) {
@@ -2237,6 +2238,20 @@
                 });
             };
 
+            chatWindow.prototype.disableChatInputBox = function () {
+                $('.chatInputBox').attr('contenteditable', false);
+                $('.sendButton').addClass('disabled');
+                $('.attachmentBtn').addClass('no-show');
+                $('.chatSendMsg').html('Please choose option');
+            };
+
+            chatWindow.prototype.enableChatInputBox = function () {
+                $('.chatInputBox').attr('contenteditable', true);
+                $('.sendButton').removeClass('disabled');
+                $('.attachmentBtn').removeClass('no-show');
+                $('.chatSendMsg').html('Press enter to send');
+            };
+
             chatWindow.prototype.renderMessage = function (msgData) {
                 var me = this, messageHtml = '', extension = '', _extractedFileName = '';
                 var helpers=me.helpers;
@@ -2276,6 +2291,9 @@
                 if (messageHtml === '' && msgData && msgData.message && msgData.message[0]) {
 
                     if (msgData.message[0] && msgData.message[0].component && msgData.message[0].component.payload && msgData.message[0].component.payload.template_type == "button") {
+                        if (!msgData.fromHistory) {
+                            me.disableChatInputBox()
+                        }
                         messageHtml = $(me.getChatTemplate("templatebutton")).tmpl({
                             'msgData': msgData,
                             'helpers': helpers,
@@ -2295,6 +2313,9 @@
                         });
                     }
                     else if (msgData.message[0] && msgData.message[0].component && msgData.message[0].component.payload && msgData.message[0].component.payload.template_type == "quick_replies") {
+                        if (!msgData.fromHistory) {
+                            me.disableChatInputBox()
+                        }
                         messageHtml = $(me.getChatTemplate("templatequickreply")).tmpl({
                             'msgData': msgData,
                             'helpers': helpers,
@@ -3006,7 +3027,6 @@
                 var me = this;
                 me.msgRenderingProgress = false;
                 me.renderEventLoop=setInterval(function () {
-                    console.log("Running Event loop")
                     me.checkForMsgQueue();
                 }, 500);
             }
